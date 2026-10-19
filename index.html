@@ -154,6 +154,8 @@ h2 { margin: 0; font: 800 10.5px/1.25 var(--f-ui); letter-spacing: 0.14em; text-
 .pixmap svg { display: block; width: 100%; height: auto; }
 .px-scr { fill: var(--plan-bg); stroke: var(--plan); stroke-width: 2; }
 .px-ris { fill: var(--amber-bg); stroke: var(--amber); stroke-width: 2; }
+.px-gap { fill: none; stroke: var(--ink-2); stroke-width: 2; stroke-dasharray: 6 5; }
+.px-cam { fill: none; stroke: var(--warn); stroke-width: 3; }
 .px-t { fill: var(--ink); font: 800 40px var(--f-ui); text-anchor: middle; }
 .px-s { fill: var(--ink-2); font: 500 30px var(--f-mono); text-anchor: middle; }
 .px-n { fill: var(--ink-2); font: italic 400 26px var(--f-text); text-anchor: middle; }
@@ -190,6 +192,11 @@ details.truss .ctl.all label { font-weight: 800; }
 .dl a:hover { background: var(--accent-soft); border-color: var(--accent); }
 .dl a small { font: 500 11px/1.2 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
 .file input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.loads { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.vctl { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.vctl .btn { min-width: 64px; }
+.vctl input[type="range"] { width: 100%; margin: 0; accent-color: var(--accent); }
+.vctl output { font: 600 12px/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
 
 table.sight { width: 100%; border-collapse: collapse; font: 500 12px/1.3 var(--f-mono); font-variant-numeric: tabular-nums; }
 table.sight th { text-align: left; font: 700 9.5px/1.2 var(--f-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); padding: 0 0 6px; }
@@ -328,51 +335,66 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
       <div class="pseg" role="group" aria-label="Screen content">
         <button type="button" data-content="layout" aria-pressed="true">Cabinet layout</button>
         <button type="button" data-content="sample" aria-pressed="false">Sample</button>
-        <button type="button" data-content="file" aria-pressed="false" disabled>Your PNG</button>
+        <button type="button" data-content="file" aria-pressed="false" disabled>Your file</button>
       </div>
-      <label class="file" for="pixmapFile">Load a pixel-map PNG<input type="file" id="pixmapFile" accept="image/png,image/jpeg,image/webp"></label>
+      <div class="loads">
+        <label class="file" for="pixmapFile">Load a pixel-map PNG<input type="file" id="pixmapFile" accept="image/png,image/jpeg,image/webp"></label>
+        <label class="file" for="videoFile">Load a video<input type="file" id="videoFile" accept="video/mp4,video/webm,video/quicktime,.mp4,.m4v,.webm,.mov"></label>
+      </div>
       <p class="read bad" id="pixmapWarn" hidden></p>
+      <div class="vctl" id="vidCtl" role="group" aria-label="Video playback" hidden>
+        <button type="button" class="btn" id="vidPlay">Pause</button>
+        <input type="range" id="vidTime" min="0" max="1000" step="1" value="0" aria-label="Video position">
+        <output id="vidTimeO" for="vidTime">0:00 / 0:00</output>
+      </div>
+      <p class="note">Videos play muted on a loop. Export an H.264 MP4 in the shape of one of the sizes below. A quarter-size file plays smoothly: 3160 × 640 for the full map, 3160 × 600 for the three screens, 1600 × 640 for Screen 1 and the risers, 1440 × 600 for Screen 1. ProRes plays only in Safari on a Mac, not in Chrome or Edge.</p>
       <figure class="pixmap">
-        <svg viewBox="0 0 1152 352" role="img" aria-label="Pixel map: Screen 2, Screen 1 and Screen 3 across the top, the keys and drums riser wraps in a strip centered under Screen 1">
-          <rect class="px-scr" x="1" y="1" width="286" height="238"/><rect class="px-scr" x="289" y="1" width="574" height="238"/><rect class="px-scr" x="865" y="1" width="286" height="238"/>
+        <svg viewBox="0 0 1264 352" role="img" aria-label="Pixel map: Screen 2, Screen 1 and Screen 3 across the top with an air gap either side of Screen 1, the keys and drums riser wraps in a strip centered under Screen 1">
+          <rect class="px-scr" x="1" y="1" width="286" height="238"/><rect class="px-scr" x="345" y="1" width="574" height="238"/><rect class="px-scr" x="977" y="1" width="286" height="238"/>
+          <rect class="px-gap" x="291" y="3" width="50" height="234"/><rect class="px-gap" x="923" y="3" width="50" height="234"/>
           <text class="px-t" x="144" y="112">SCREEN 2</text><text class="px-s" x="144" y="152">2880 × 2400</text>
-          <text class="px-t" x="576" y="112">SCREEN 1</text><text class="px-s" x="576" y="152">5760 × 2400</text>
-          <text class="px-t" x="1008" y="112">SCREEN 3</text><text class="px-s" x="1008" y="152">2880 × 2400</text>
-          <rect class="px-ris" x="257" y="250" width="79" height="60"/><rect class="px-ris" x="337" y="250" width="159" height="60"/><rect class="px-ris" x="497" y="250" width="79" height="60"/>
-          <rect class="px-ris" x="577" y="250" width="79" height="60"/><rect class="px-ris" x="657" y="250" width="159" height="60"/><rect class="px-ris" x="817" y="250" width="79" height="60"/>
-          <text class="px-s" x="416" y="291">KEYS</text><text class="px-s" x="736" y="291">DRUMS</text>
-          <text class="px-n" x="576" y="342">riser row drawn taller than scale</text>
+          <text class="px-t" x="632" y="112">SCREEN 1</text><text class="px-s" x="632" y="152">5760 × 2400</text>
+          <text class="px-t" x="1120" y="112">SCREEN 3</text><text class="px-s" x="1120" y="152">2880 × 2400</text>
+          <rect class="px-cam" x="595" y="178" width="74" height="42"/>
+          <rect class="px-ris" x="313" y="250" width="79" height="60"/><rect class="px-ris" x="393" y="250" width="159" height="60"/><rect class="px-ris" x="553" y="250" width="79" height="60"/>
+          <rect class="px-ris" x="633" y="250" width="79" height="60"/><rect class="px-ris" x="713" y="250" width="159" height="60"/><rect class="px-ris" x="873" y="250" width="79" height="60"/>
+          <text class="px-s" x="472" y="291">KEYS</text><text class="px-s" x="792" y="291">DRUMS</text>
+          <text class="px-n" x="632" y="342">riser row drawn taller than scale</text>
         </svg>
       </figure>
       <table class="sight pxmap">
         <thead><tr><th colspan="2">File sizes you can load</th></tr></thead>
         <tbody>
-          <tr><td>All three screens and both riser wraps</td><td>11520 × 2560</td></tr>
-          <tr><td>All three screens</td><td>11520 × 2400</td></tr>
+          <tr><td>All three screens and both riser wraps</td><td>12640 × 2560</td></tr>
+          <tr><td>All three screens</td><td>12640 × 2400</td></tr>
           <tr><td>Screen 1 and both riser wraps</td><td>6400 × 2560</td></tr>
           <tr><td>Screen 1</td><td>5760 × 2400</td></tr>
         </tbody>
       </table>
       <div class="dl" role="group" aria-label="Download a labeled template">
         <span class="k">Download a labeled template</span>
-        <a href="hsl-pixel-map-11520x2560.png" target="_blank" rel="noopener" data-dl>Full map<small>11520 × 2560</small></a>
-        <a href="hsl-pixel-map-11520x2400-screens.png" target="_blank" rel="noopener" data-dl>Three screens<small>11520 × 2400</small></a>
+        <a href="hsl-pixel-map-12640x2560.png" target="_blank" rel="noopener" data-dl>Full map<small>12640 × 2560</small></a>
+        <a href="hsl-pixel-map-12640x2400-screens.png" target="_blank" rel="noopener" data-dl>Three screens<small>12640 × 2400</small></a>
         <a href="hsl-pixel-map-6400x2560-screen-1-risers.png" target="_blank" rel="noopener" data-dl>Screen 1 + risers<small>6400 × 2560</small></a>
         <a href="hsl-pixel-map-5760x2400-screen-1.png" target="_blank" rel="noopener" data-dl>Screen 1<small>5760 × 2400</small></a>
         <p class="note dl-note" id="dlNote" aria-live="polite" hidden></p>
       </div>
-      <p class="note">The page reads a file's size to know what it fills. A 6400 × 2560 file is the full map cropped to x 2560–8960, so Screen 1 sits at x 320 with the riser strip along the bottom. Anything a file doesn't cover goes dark.</p>
+      <p class="note">The page reads a file's size to know what it fills. A 6400 × 2560 file is the full map cropped to x 3120–9520, so Screen 1 sits at x 320 with the riser strip along the bottom. Anything a file doesn't cover goes dark.</p>
       <table class="sight pxmap">
         <thead><tr><th>In the full map</th><th>Pixels</th><th>At x, y</th></tr></thead>
         <tbody>
           <tr><td>Screen 2, house left</td><td>2880 × 2400</td><td>0, 0</td></tr>
-          <tr><td>Screen 1, center</td><td>5760 × 2400</td><td>2880, 0</td></tr>
-          <tr><td>Screen 3, house right</td><td>2880 × 2400</td><td>8640, 0</td></tr>
-          <tr><td>Keys wrap: outer end, front, inner end</td><td>800 + 1600 + 800<br>× 160</td><td>2560, 2400</td></tr>
-          <tr><td>Drums wrap: inner end, front, outer end</td><td>800 + 1600 + 800<br>× 160</td><td>5760, 2400</td></tr>
+          <tr><td>Air gap, no LED</td><td>560 × 2400</td><td>2880, 0</td></tr>
+          <tr><td>Screen 1, center</td><td>5760 × 2400</td><td>3440, 0</td></tr>
+          <tr><td>Air gap, no LED</td><td>560 × 2400</td><td>9200, 0</td></tr>
+          <tr><td>Screen 3, house right</td><td>2880 × 2400</td><td>9760, 0</td></tr>
+          <tr><td>Keys wrap: outer end, front, inner end</td><td>800 + 1600 + 800<br>× 160</td><td>3120, 2400</td></tr>
+          <tr><td>Drums wrap: inner end, front, outer end</td><td>800 + 1600 + 800<br>× 160</td><td>6320, 2400</td></tr>
+          <tr><td>Center camera, default shot (16:9)</td><td>746 × 420</td><td>5947, 1772</td></tr>
+          <tr><td>6′ above the deck, dashed</td><td>every screen</td><td>y 1815</td></tr>
         </tbody>
       </table>
-      <p class="note">The full map puts the three screens at their native resolution across the top and both riser wraps in a strip centered under Screen 1, each wrap reading left to right as seen from the house. The risers are ROE JT3.1 500 mm half panels at 160 px each: ten across each front, five on each end. Files you load stay in this browser.</p>
+      <p class="note">The full map lays the three screens side by side at their native resolution, as if they stood in one plane. A 560 px air gap with no LED sits between Screen 1 and each side screen: the 5′-8½″ in the working layout. Both riser wraps sit in a strip centered under Screen 1, each wrap reading left to right as seen from the house. The risers are ROE JT3.1 500 mm half panels at 160 px each: ten across each front, five on each end. The red box on Screen 1 is what the center camera takes in at its default shot. The dashed yellow line on each screen is 6′ above the deck, where all three screens stand. Files you load stay in this browser.</p>
     </section>
 
     <section class="sec" aria-labelledby="h-scen">
@@ -411,7 +433,7 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
         <p class="read" id="s-read"></p>
       </div>
 
-      <p class="note" id="placeNote">The screens sit where they will hang in February 2027. Load a pixel-map PNG above to see your graphics in the room, then use the seat buttons above the model to check them from the house.</p>
+      <p class="note" id="placeNote">The screens sit where they will hang in February 2027. Load a pixel-map PNG or a video above to see your content in the room, then use the seat and camera buttons above the model to check it from the house.</p>
       <div class="btnrow full-only">
         <button type="button" class="btn primary" id="copyBtn">Copy placement</button>
         <button type="button" class="btn" id="resetBtn">Reset to working layout</button>
@@ -1114,29 +1136,43 @@ for (const c of CAMS.filter(k => k.tilts)) {
 /* =====================================================================================
    5. SCREENS
    ===================================================================================== */
-// Pixel map: the full map is one 11520 × 2560 PNG for every LED surface. Rectangles are [x, y, w, h] in map
-// pixels and must match make_pixel_map_template.py. Riser wraps are ROE JT3.1 500 mm half panels (160 px each,
-// Solotech quote), five panels on every end and ten across each front. They read left to right as seen from the
-// house and sit centered under Screen 1, keys and drums meeting on its centerline.
+// Pixel map: the full map is one 12640 × 2560 file for every LED surface. Rectangles are [x, y, w, h] in map
+// pixels and must match make_pixel_map_template.py. The three screens sit in one plane with an air gap of no LED
+// between Screen 1 and each side screen (Brian, 18 Oct): 5'-8½" in the working layout, 560 px. Riser wraps are
+// ROE JT3.1 500 mm half panels (160 px each, Solotech quote), five panels on every end and ten across each front.
+// They read left to right as seen from the house and sit centered under Screen 1, keys and drums meeting on its
+// centerline.
 // sizes: the files a designer can load, listed under the drawing in "On the screens". Each is the map cropped to
-// start at map x `x`; a surface fills only when it sits wholly inside the crop, and the rest go dark.
+// start at map x `x`; a surface fills only when it sits wholly inside the crop, and the rest go dark. The first maps
+// (15 Oct) had no gaps; those two sizes still load, sliced as they were drawn.
+const MAP_GAP = 560;
+function mapRegions(gap) {
+  const s1 = 2880 + gap, s3 = s1 + 5760 + gap, rx = s1 - 320;
+  return {
+    left: [0, 0, 2880, 2400], center: [s1, 0, 5760, 2400], right: [s3, 0, 2880, 2400],
+    keysOuter: [rx, 2400, 800, 160], keysFront: [rx + 800, 2400, 1600, 160], keysInner: [rx + 2400, 2400, 800, 160],
+    drumsInner: [rx + 3200, 2400, 800, 160], drumsFront: [rx + 4000, 2400, 1600, 160], drumsOuter: [rx + 5600, 2400, 800, 160],
+  };
+}
+const MAP_W = 2 * 2880 + 5760 + 2 * MAP_GAP;
 const PIXMAP = {
-  regions: {
-    left: [0, 0, 2880, 2400], center: [2880, 0, 5760, 2400], right: [8640, 0, 2880, 2400],
-    keysOuter: [2560, 2400, 800, 160], keysFront: [3360, 2400, 1600, 160], keysInner: [4960, 2400, 800, 160],
-    drumsInner: [5760, 2400, 800, 160], drumsFront: [6560, 2400, 1600, 160], drumsOuter: [8160, 2400, 800, 160],
-  },
+  regions: mapRegions(MAP_GAP),
   sizes: [
-    { w: 11520, h: 2560, x: 0, fills: 'all three screens and both riser wraps' },
-    { w: 11520, h: 2400, x: 0, fills: 'all three screens' },
-    { w: 6400, h: 2560, x: 2560, fills: 'Screen 1 and both riser wraps' },
-    { w: 5760, h: 2400, x: 2880, fills: 'Screen 1' },
+    { w: MAP_W, h: 2560, x: 0, fills: 'all three screens and both riser wraps' },
+    { w: MAP_W, h: 2400, x: 0, fills: 'all three screens' },
+    { w: 6400, h: 2560, x: 2880 + MAP_GAP - 320, fills: 'Screen 1 and both riser wraps' },
+    { w: 5760, h: 2400, x: 2880 + MAP_GAP, fills: 'Screen 1' },
+  ],
+  legacy: [
+    { w: 11520, h: 2560, x: 0, fills: 'all three screens and both riser wraps', regions: mapRegions(0) },
+    { w: 11520, h: 2400, x: 0, fills: 'all three screens', regions: mapRegions(0) },
   ],
 };
 let content = 'layout';
 let showImg = null, showSize = null;   // the loaded file and the PIXMAP.sizes entry it fills
+let fileKind = null;                   // 'image' or 'video': whichever was loaded last
 function drawRegion(ctx, w, h, key) {   // paint one surface's slice of the loaded file, as the processor would
-  const r = content === 'file' && showImg && PIXMAP.regions[key], s = showSize;
+  const s = showSize, r = content === 'file' && fileKind === 'image' && showImg && (s.regions || PIXMAP.regions)[key];
   if (!r) return false;
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, w, h);
@@ -1214,7 +1250,7 @@ function makeScreen(spec, mirror = 0, region = null) {
   back.position.z = -0.16;
   g.add(face, back);
   scene.add(g);
-  const scr = { spec, g, canvas, tex, mirror, region };
+  const scr = { spec, g, canvas, tex, mirror, region, key: region, mat: face.material };
   drawScreen(scr);
   return scr;
 }
@@ -1259,10 +1295,11 @@ function riserFace(len, key) {
   canvas.width = Math.round(120 * len); canvas.height = Math.round(120 * RISER.h);
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  const f = { canvas, tex, len, key };
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(len, RISER.h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  const f = { canvas, tex, len, key, mat: mesh.material };
   riserFaces.push(f);
   drawRiserFace(f);
-  return new THREE.Mesh(new THREE.PlaneGeometry(len, RISER.h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  return mesh;
 }
 // Local frame: x across the stage (world x), front edge at z = 0, upstage toward −z
 function makeRiser(side, deepOuterHalf) {   // side −1 = house left (stage right), +1 = house right (stage left)
@@ -2010,11 +2047,42 @@ function setScenario(s) {
   document.getElementById('caption').innerHTML = caption(current);
 }
 document.querySelectorAll('[data-scen]').forEach(b => b.addEventListener('click', () => setScenario(b.dataset.scen)));
+// An editor's video, kept in this browser only: it plays muted on a loop and fills the surfaces its shape picks,
+// exactly as a PNG of that shape would. One video texture is shared, and each surface samples its own rectangle of it.
+const vid = Object.assign(document.createElement('video'), { muted: true, loop: true, playsInline: true, preload: 'auto' });
+let vidURL = null, vidTex = null, vidHeld = false;   // vidHeld: the viewer paused it
+const vidCtl = document.getElementById('vidCtl'), vidPlay = document.getElementById('vidPlay'), vidTime = document.getElementById('vidTime');
+const ledSurfaces = () => [SCR.center, SCR.left, SCR.right, ...riserFaces];
+function mapVideo() {   // each surface shows its rectangle of the video, goes dark when the file leaves it out, or shows its canvas
+  const on = content === 'file' && fileKind === 'video' && vidTex, s = showSize;
+  for (const o of ledSurfaces()) {
+    const r = on && PIXMAP.regions[o.key];
+    let map = o.tex, color = 0xffffff;
+    if (on && (r[0] < s.x || r[0] + r[2] > s.x + s.w || r[1] + r[3] > s.h)) { map = null; color = 0x000000; }
+    else if (on) {
+      map = o.vt || (o.vt = vidTex.clone());
+      map.offset.set((r[0] - s.x) / s.w, 1 - (r[1] + r[3]) / s.h);
+      map.repeat.set(r[2] / s.w, r[3] / s.h);
+    }
+    if (o.mat.map !== map) { o.mat.map = map; o.mat.needsUpdate = true; }
+    o.mat.color.setHex(color);
+  }
+  if (on && !vidHeld) vid.play().catch(() => {});
+  else vid.pause();
+  vidCtl.hidden = !on;
+  needsRender = true;
+}
+function fileButton(kind) {
+  const b = document.querySelector('[data-content="file"]');
+  b.disabled = !kind;
+  b.textContent = kind === 'video' ? 'Your video' : kind === 'image' ? 'Your PNG' : 'Your file';
+}
 function setContent(mode) {
   content = mode;
   document.querySelectorAll('[data-content]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.content === mode)));
   Object.values(SCR).forEach(drawScreen);
   riserFaces.forEach(drawRiserFace);
+  mapVideo();
   needsRender = true;
 }
 document.querySelectorAll('[data-content]').forEach(b => b.addEventListener('click', () => setContent(b.dataset.content)));
@@ -2098,13 +2166,16 @@ document.getElementById('pixmapFile').addEventListener('change', e => {
   const img = new Image();
   img.onload = () => {
     const w = img.naturalWidth, h = img.naturalHeight, off = s => Math.abs(Math.log(w / h * s.h / s.w));
-    const exact = PIXMAP.sizes.find(s => s.w === w && s.h === h);
+    const exact = PIXMAP.sizes.find(s => s.w === w && s.h === h), first = PIXMAP.legacy.find(s => s.w === w && s.h === h);
     showImg = img;
-    showSize = exact || PIXMAP.sizes.reduce((a, s) => off(s) < off(a) ? s : a);
+    fileKind = 'image';
+    showSize = exact || first || PIXMAP.sizes.reduce((a, s) => off(s) < off(a) ? s : a);
     const scaled = off(showSize) < 0.005;
-    el.textContent = exact ? '' : `This file is ${w} × ${h}, not one of the sizes listed below, so it was ${scaled ? 'scaled' : 'stretched'} to fill ${showSize.fills}.${scaled ? '' : ' Expect distortion.'}`;
+    el.textContent = exact ? ''
+      : first ? `This ${w} × ${h} file is on the first map, which had no gaps between the screens. It still fills ${first.fills} as drawn. Build new files on the ${MAP_W}-wide template.`
+      : `This file is ${w} × ${h}, not one of the sizes listed below, so it was ${scaled ? 'scaled' : 'stretched'} to fill ${showSize.fills}.${scaled ? '' : ' Expect distortion.'}`;
     el.hidden = !!exact;
-    document.querySelector('[data-content="file"]').disabled = false;
+    fileButton('image');
     setContent('file');
   };
   img.onerror = () => {
@@ -2112,6 +2183,65 @@ document.getElementById('pixmapFile').addEventListener('change', e => {
     el.hidden = false;
   };
   img.src = URL.createObjectURL(f);
+});
+// An editor's video: the shape of its frame picks the PIXMAP.sizes entry (videos come scaled down, so only the shape
+// counts), and the surfaces switch over once the first frame has decoded
+document.getElementById('videoFile').addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0], el = document.getElementById('pixmapWarn');
+  if (!f) return;
+  let size = null;
+  vid.onloadedmetadata = () => {
+    const w = vid.videoWidth, h = vid.videoHeight, off = s => Math.abs(Math.log(w / h * s.h / s.w));
+    size = PIXMAP.sizes.reduce((a, s) => off(s) < off(a) ? s : a);
+    const fits = off(size) < 0.005;
+    el.textContent = fits ? '' : `This video is ${w} × ${h}, which isn't the shape of any size listed below, so it was stretched to fill ${size.fills}. Expect distortion.`;
+    el.hidden = fits;
+    vid.play().catch(() => {});   // some browsers decode the first frame only once it plays
+  };
+  vid.onloadeddata = () => {
+    for (const o of ledSurfaces()) { o.vt?.dispose(); o.vt = null; }
+    vidTex?.dispose();
+    vidTex = new THREE.VideoTexture(vid);
+    vidTex.colorSpace = THREE.SRGBColorSpace;
+    showSize = size; showImg = null; fileKind = 'video'; vidHeld = false;
+    fileButton('video');
+    setContent('file');
+  };
+  vid.onerror = async () => {
+    el.textContent = await isProRes(f)
+      ? `${f.name} is ProRes, which this browser can't play. Safari on a Mac plays ProRes; Chrome and Edge don't. Open this page in Safari, or export an H.264 MP4.`
+      : `${f.name} won't play in this browser. Export it as an H.264 MP4 and try again.`;
+    el.hidden = false;
+    if (fileKind === 'video') { fileKind = null; fileButton(null); setContent('layout'); }
+  };
+  if (vidURL) URL.revokeObjectURL(vidURL);
+  vidURL = URL.createObjectURL(f);
+  vid.src = vidURL;
+});
+// ProRes is the usual edit export, and only Safari plays it (Chrome 152 and Safari 26 checked, 18 Oct). When a video
+// won't play, look for a ProRes codec tag in its moov box, which sits at the start or the end of the file.
+async function isProRes(f) {
+  const tags = /ap4[hx]|apc[nhso]/, look = async (a, b) => new TextDecoder('latin1').decode(await f.slice(a, b).arrayBuffer());
+  try { return tags.test(await look(0, 1 << 20)) || tags.test(await look(Math.max(0, f.size - (4 << 20)), f.size)); }
+  catch { return false; }
+}
+const clock = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+let scrubAt = 0;   // while the viewer drags the position slider, playback doesn't pull it back
+function vidReadout() {
+  const d = vid.duration || 0;
+  vidPlay.textContent = vid.paused ? 'Play' : 'Pause';
+  if (performance.now() - scrubAt > 400) vidTime.value = String(d ? Math.round(vid.currentTime / d * 1000) : 0);
+  document.getElementById('vidTimeO').textContent = `${clock(vid.currentTime)} / ${clock(d)}`;
+}
+for (const ev of ['play', 'pause', 'timeupdate', 'durationchange']) vid.addEventListener(ev, vidReadout);
+vid.addEventListener('seeked', () => { for (const o of ledSurfaces()) if (o.vt) o.vt.needsUpdate = true; needsRender = true; });
+vidPlay.addEventListener('click', () => {
+  vidHeld = !vid.paused;
+  if (vidHeld) vid.pause(); else vid.play().catch(() => {});
+});
+vidTime.addEventListener('input', () => {
+  scrubAt = performance.now();
+  if (vid.duration) vid.currentTime = +vidTime.value / 1000 * vid.duration;
 });
 // Template downloads: each link opens its PNG. Inside the claude.ai viewer the downloads capability saves the file
 // instead (the viewer confirms each save). The bytes go over as an ArrayBuffer, which every host can pass on (a Blob
@@ -2194,6 +2324,7 @@ function loop(now) {
   requestAnimationFrame(loop);
   if (tween) { stepTween(now); needsRender = true; }
   else if (controls.update()) needsRender = true;
+  if (content === 'file' && fileKind === 'video' && !vid.paused) needsRender = true;   // a playing video draws every frame
   // the 3D view's tilt, put back after every update (the orbit aims the camera at its center each frame)
   if (viewTilt && current === 'overview' && !tween) persp.rotateX(viewTilt * DEG);
   syncRoof();
