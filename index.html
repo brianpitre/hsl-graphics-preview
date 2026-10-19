@@ -243,7 +243,7 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
   html, body { height: auto; }
   .app { grid-template-columns: minmax(0, 1fr); height: auto; }
   .sheet { height: 72vh; height: 72svh; min-height: 420px; }
-  .sheet.shooting { height: 86vh; height: 86svh; }   /* a camera view needs room for its frame between the toolbar and its controls */
+  .sheet.shooting { height: 86vh; height: 86svh; min-height: 560px; }   /* a camera view needs room for its frame between the toolbar and its controls, even when three rows of camera buttons sit above them on a short screen */
   .panel { overflow: visible; }
   .caption { max-width: 100%; }
   .foot { flex-wrap: wrap; }
