@@ -350,6 +350,8 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
         <input type="range" id="vidTime" min="0" max="1000" step="1" value="0" aria-label="Video position">
         <output id="vidTimeO" for="vidTime">0:00 / 0:00</output>
       </div>
+      <div class="ctl"><label for="roomDim">Room lights (LED stays lit)</label><output id="roomDimO" for="roomDim">Full</output>
+        <input type="range" id="roomDim" min="0" max="100" step="1" value="100"></div>
       <p class="note">Videos play muted on a loop. Export an H.264 MP4 in the shape of one of the sizes below. A quarter-size file plays smoothly: 3160 × 640 for the full map, 3160 × 600 for the three screens, 1600 × 640 for Screen 1 and the risers, 1440 × 600 for Screen 1. ProRes plays only in Safari on a Mac, not in Chrome or Edge.</p>
       <figure class="pixmap">
         <svg viewBox="0 0 1264 352" role="img" aria-label="Pixel map: Screen 2, Screen 1 and Screen 3 across the top with an air gap either side of Screen 1, the keys and drums riser wraps in a strip centered under Screen 1">
@@ -697,6 +699,9 @@ const host = document.getElementById('viewport');
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: SHOT });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+// Room lights (Brian, 19 Oct) dim everything but the LED. At exposure 1, linear tone mapping looks exactly like none.
+// The screens and riser wraps skip tone mapping (toneMapped: false), so the exposure never touches them.
+renderer.toneMapping = THREE.LinearToneMapping;
 host.appendChild(renderer.domElement);
 const labels = new CSS2DRenderer();
 labels.domElement.className = 'labels';
@@ -1923,7 +1928,7 @@ function setView(key, animate = true) {
   controls.update();
   needsRender = true;
 }
-if (params.has('debug')) window.__view = { VIEWS, setView, persp, SCR };   // local checks: try a view preset, then setView(key, false)
+if (params.has('debug')) window.__view = { VIEWS, setView, persp, SCR, renderer };   // local checks: try a view preset, then setView(key, false)
 function stepTween(now) {
   const k = Math.min(1, (now - tween.t0) / 900), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
   persp.position.lerpVectors(tween.p0, tween.p1, e);
@@ -2093,6 +2098,15 @@ function setContent(mode) {
   needsRender = true;
 }
 document.querySelectorAll('[data-content]').forEach(b => b.addEventListener('click', () => setContent(b.dataset.content)));
+// The dimmer reads as seen brightness: exposure works on linear light ahead of the sRGB curve, so it goes as the
+// slider to the 2.2, and half on the slider looks half as bright. 0 is a blacked-out room with only the LED lit.
+const roomDim = document.getElementById('roomDim');
+roomDim.addEventListener('input', () => {
+  const v = +roomDim.value;
+  renderer.toneMappingExposure = (v / 100) ** 2.2;
+  document.getElementById('roomDimO').textContent = v === 100 ? 'Full' : v === 0 ? 'Off' : `${v}%`;
+  needsRender = true;
+});
 // Camera controls, on whichever camera is showing (each keeps its own settings): zoom on a log scale (0 = the
 // camera's widest, 100 = close-up, so right zooms in), pan, on the side cameras tilt, and on the dollies the dolly
 const camZoom = document.getElementById('cam-zoom'), camPan = document.getElementById('cam-pan'), camTilt = document.getElementById('cam-tilt');
