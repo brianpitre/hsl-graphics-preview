@@ -275,6 +275,8 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
         <button type="button" data-view="camR" aria-pressed="false">Right</button>
         <button type="button" data-view="camFR" aria-pressed="false">Far right</button>
         <button type="button" data-view="camFloor" aria-pressed="false">Floor</button>
+        <button type="button" data-view="camDollyC" aria-pressed="false">Center dolly</button>
+        <button type="button" data-view="camDollyFR" aria-pressed="false">Far-right dolly</button>
       </div>
       <label class="vchk full-only" for="dimsToggle"><input type="checkbox" id="dimsToggle" checked> Dimensions</label>
     </div>
@@ -291,6 +293,8 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
           <input type="range" id="cam-pan" min="-15" max="15" step="0.1" value="0"></div>
         <div class="ctl" id="camTiltRow"><label for="cam-tilt">Tilt</label><output id="cam-tilt-o" for="cam-tilt"></output>
           <input type="range" id="cam-tilt" min="-10" max="10" step="0.1" value="0"></div>
+        <div class="ctl" id="camDollyRow"><label for="cam-dolly">Dolly</label><output id="cam-dolly-o" for="cam-dolly"></output>
+          <input type="range" id="cam-dolly" min="-10" max="10" step="0.25" value="0"></div>
       </div>
       <div id="viewCtl" class="camctl ui-only" role="group" aria-label="3D view" hidden>
         <div class="ctl"><span class="ctl-name" id="lens-l">Field of view</span><output id="lens-o"></output>
@@ -1002,26 +1006,51 @@ const tierCount = t => seats.filter(s => s.tier === t).length;
 // a head-and-shoulders close-up out to head to toe (center) or a 55° wide shot (the rest); up to head to toe the tilt
 // keeps the top of the head a tenth of the frame below the top edge, an operator's headroom, and wider shots hold that
 // aim. Every camera pans 15° each way; all but the center also tilt 10° either way off their framing.
+// Dollies (Brian, 18 Oct): the four cross-aisle cameras roll 10' either way along the aisle's curve. Two dolly cameras
+// stand on the house floor 2' in front of the first slope row, lenses 6' up: one at center on a track parallel to
+// Screen 1, one in front of the far house-right section on a track square to it. The seats stop that one moving toward
+// the house, so its track runs 20' from the seats toward the stage. A dolly keeps the presenter framed at the same shot
+// size; pan and tilt stay offsets from that aim.
 const PRESENTER = { x: S.platform.cx - S.platform.r + 6, eye: 65.5 / 12, head: 70 / 12 };   // plan x; heights above the deck
 const CAM_ASPECT = 16 / 9, CLOSE_UP = 18 / 12, HEAD_TO_TOE = 84 / 12, SIDE_WIDE = 55;
-function imagCamera(key, label, where, [x, y], floorEl, lensEl, sides) {
-  const dx = PRESENTER.x - x, dy = -y, dist = Math.hypot(dx, dy);
-  const frameMax = sides ? 2 * dist * Math.tan(SIDE_WIDE / 2 * DEG) / CAM_ASPECT : HEAD_TO_TOE;
-  return { key, label, where, x, y, floor: floorEl, lens: lensEl - S.deck, dist, yaw: Math.atan2(dy, dx), frameMax, tilts: sides, frameH: 35.25 / 12, pan: 0, tilt: 0 };
+function imagCamera(key, label, where, xy, floorEl, lensEl, sides, track = null) {
+  return standCam({ key, label, where, floor: floorEl, lens: lensEl - S.deck, tilts: sides, track, dolly: 0, frameH: 35.25 / 12, pan: 0, tilt: 0 }, xy);
+}
+function standCam(c, [x, y]) {   // the camera at plan (x, y), aimed at the presenter; the widest shot is 55° wherever it stands
+  const dx = PRESENTER.x - x, dy = -y;
+  Object.assign(c, { x, y, dist: Math.hypot(dx, dy), yaw: Math.atan2(dy, dx) });
+  c.frameMax = c.tilts ? 2 * c.dist * Math.tan(SIDE_WIDE / 2 * DEG) / CAM_ASPECT : HEAD_TO_TOE;
+  return c;
 }
 const CAM_CENTER_EL = S.deck + PRESENTER.eye, CAM_SIDE_EL = CAM_CENTER_EL - 1.5, CAM_SIDE_R = S.slopeOut + 2, CAM_PEDESTAL = CAM_SIDE_EL - S.firstFloor;
 const FLOOR_CAM = (() => {   // halfway along the stage's curved edge from center to where it meets the stage-left wall, 2½' out
   const { cx, r } = S.platform, end = Math.atan2(Math.sqrt(r * r - (cx - S.jamb.x0) ** 2), S.jamb.x0 - cx), a = (Math.PI + end) / 2;
   return [cx + (r + 2.5) * Math.cos(a), (r + 2.5) * Math.sin(a)];
 })();
-const CAMS = [   // house left to house right, then the floor camera; the side cameras stand behind their sections' centers
-  imagCamera('camFL', 'Far left', 'Far-left camera on the cross aisle behind section 201, lens 18″ below the center camera', atPolar(CAM_SIDE_R, -59.25), S.firstFloor, CAM_SIDE_EL, true),
-  imagCamera('camL', 'Left', 'Left camera on the cross aisle behind section 203, lens 18″ below the center camera', atPolar(CAM_SIDE_R, -25.6), S.firstFloor, CAM_SIDE_EL, true),
+// Dolly tracks: at(o) is where the camera stands o feet from its mark, + to the operator's right
+const aisleTrack = phi => ({ min: -10, max: 10, at: o => atPolar(CAM_SIDE_R, phi + o / CAM_SIDE_R / DEG) });
+const lineTrack = ([x, y], [ux, uy], min, max) => ({ min, max, at: o => [x + o * ux, y + o * uy] });
+const DOLLY_R = SLOPE.rows[0] - 2.9, DOLLY_EL = S.low + 6;   // the floor dollies: 2' clear of the first slope row's seat fronts
+const DOLLY_C = [-DOLLY_R, 0], DOLLY_FR = atPolar(DOLLY_R, 59.25);
+const CAMS = [   // house left to house right, then the floor camera and the floor dollies; the side cameras stand behind their sections' centers
+  imagCamera('camFL', 'Far left', 'Far-left camera on the cross aisle behind section 201, lens 18″ below the center camera', atPolar(CAM_SIDE_R, -59.25), S.firstFloor, CAM_SIDE_EL, true, aisleTrack(-59.25)),
+  imagCamera('camL', 'Left', 'Left camera on the cross aisle behind section 203, lens 18″ below the center camera', atPolar(CAM_SIDE_R, -25.6), S.firstFloor, CAM_SIDE_EL, true, aisleTrack(-25.6)),
   imagCamera('cam', 'Center', 'Center camera at the balcony platform, lens at the eye height of the 5′10″ presenter (center stage, 6′ from the edge)', [-100.5, 0], S.firstFloor, CAM_CENTER_EL, false),
-  imagCamera('camR', 'Right', 'Right camera on the cross aisle behind section 206, lens 18″ below the center camera', atPolar(CAM_SIDE_R, 25.6), S.firstFloor, CAM_SIDE_EL, true),
-  imagCamera('camFR', 'Far right', 'Far-right camera on the cross aisle behind section 208, lens 18″ below the center camera', atPolar(CAM_SIDE_R, 59.25), S.firstFloor, CAM_SIDE_EL, true),
+  imagCamera('camR', 'Right', 'Right camera on the cross aisle behind section 206, lens 18″ below the center camera', atPolar(CAM_SIDE_R, 25.6), S.firstFloor, CAM_SIDE_EL, true, aisleTrack(25.6)),
+  imagCamera('camFR', 'Far right', 'Far-right camera on the cross aisle behind section 208, lens 18″ below the center camera', atPolar(CAM_SIDE_R, 59.25), S.firstFloor, CAM_SIDE_EL, true, aisleTrack(59.25)),
   imagCamera('camFloor', 'Floor', 'Floor camera stage left (house right), on the house floor 2½′ off the stage edge, lens 5′-4½″ up', FLOOR_CAM, S.low, S.low + CAM_PEDESTAL, true),
+  imagCamera('camDollyC', 'Center dolly', 'Center dolly camera on the house floor 2′ in front of the center slope seating, lens 6′-0″ up, on a 20′ track parallel to Screen 1', DOLLY_C, S.low, DOLLY_EL, true, lineTrack(DOLLY_C, [0, 1], -10, 10)),
+  imagCamera('camDollyFR', 'Far-right dolly', 'Far-right dolly camera on the house floor 2′ in front of the far house-right slope section, lens 6′-0″ up, on a 20′ track square to Screen 1 running from the seats toward the stage', DOLLY_FR, S.low, DOLLY_EL, true, lineTrack(DOLLY_FR, [1, 0], 0, 20)),
 ];
+function dollyCam(c, o) {   // roll the camera along its track; the shot size holds, and a camera at its widest stays widest
+  const widest = c.frameH >= c.frameMax - 1e-6;
+  c.dolly = o;
+  standCam(c, c.track.at(o));
+  c.frameH = widest ? c.frameMax : Math.min(c.frameH, c.frameMax);
+  c.body.position.copy(W(c.x, c.y, c.floor));
+  c.body.rotation.y = -c.yaw;
+}
+const dollyText = c => Math.abs(c.dolly) < 0.01 ? '' : `${ftIn(Math.abs(c.dolly))} ${c.dolly < 0 ? 'left' : 'right'}`;
 function camAim(c) {   // radians: tilt (negative is down), the frame's vertical half-angle, yaw (positive toward house right)
   const h = Math.min(c.frameH, HEAD_TO_TOE), top = PRESENTER.head + 0.1 * h;
   const a1 = Math.atan((top - c.lens) / c.dist), a2 = Math.atan((top - h - c.lens) / c.dist);
@@ -1045,6 +1074,7 @@ for (const c of CAMS.filter(k => k.tilts)) {
   g.position.copy(W(c.x, c.y, c.floor));
   g.rotation.y = -c.yaw;
   scene.add(g);
+  c.body = g;   // a dolly moves it
 }
 
 // The presenter in that shot: 5'-10", shaped enough (shoulders, arms, head) to read in a waist-up frame
@@ -1742,8 +1772,8 @@ function clipFrame(poly, axis, sign) {   // keep the part of a polygon inside th
   return out;
 }
 function shotCaption(c) {
-  const seen = shotOnScreens(c);
-  return `${c.where} · ${seen.length ? `pixels in frame: ${seen.join(' · ')}` : 'no screen in frame'}`;
+  const seen = shotOnScreens(c), moved = dollyText(c);
+  return `${c.where}${moved ? `, dollied ${moved}` : ''} · ${seen.length ? `pixels in frame: ${seen.join(' · ')}` : 'no screen in frame'}`;
 }
 function frameOrtho(sw, sh, keepZoom) {
   orthoBase = { sw, sh };
@@ -1842,9 +1872,9 @@ function setView(key, animate = true) {
   viewCtl.hidden = key !== 'overview';
   if (key === 'overview') { viewTilt = 0; viewTiltEl.value = '0'; viewLabels(); }   // the 3D button brings back its framing, untilted
   host.parentElement.classList.toggle('shooting', !!v.shot);
+  document.getElementById('caption').innerHTML = caption(key);   // before the frame is placed: its height moves the controls
   if (v.shot) { camSync(v.shot); placeShotFrame(); }
   else persp.clearViewOffset();
-  document.getElementById('caption').innerHTML = caption(key);
   refreshAnnot();
   controls.update();
   needsRender = true;
@@ -1989,8 +2019,9 @@ function setContent(mode) {
 }
 document.querySelectorAll('[data-content]').forEach(b => b.addEventListener('click', () => setContent(b.dataset.content)));
 // Camera controls, on whichever camera is showing (each keeps its own settings): zoom on a log scale (0 = the
-// camera's widest, 100 = close-up, so right zooms in), pan, and on the side cameras tilt
+// camera's widest, 100 = close-up, so right zooms in), pan, on the side cameras tilt, and on the dollies the dolly
 const camZoom = document.getElementById('cam-zoom'), camPan = document.getElementById('cam-pan'), camTilt = document.getElementById('cam-tilt');
+const camDolly = document.getElementById('cam-dolly');
 const zoomToFrame = (c, s) => c.frameMax * (CLOSE_UP / c.frameMax) ** (s / 100);
 const frameToZoom = c => 100 * Math.log(c.frameH / c.frameMax) / Math.log(CLOSE_UP / c.frameMax);
 function camLabels(c) {
@@ -2000,21 +2031,19 @@ function camLabels(c) {
   document.getElementById('cam-zoom-o').textContent = `${shot} · ${deg.toFixed(1)}°`;
   document.getElementById('cam-pan-o').textContent = off(c.pan, 'left', 'right', 'On the presenter');
   document.getElementById('cam-tilt-o').textContent = off(c.tilt, 'down', 'up', 'Framed');
+  document.getElementById('cam-dolly-o').textContent = dollyText(c) || 'On its mark';
 }
 function camSync(c) {   // the controls take this camera's settings
   camZoom.value = String(frameToZoom(c));
   camPan.value = String(c.pan);
   camTilt.value = String(c.tilt);
   document.getElementById('camTiltRow').hidden = !c.tilts;
+  if (c.track) Object.assign(camDolly, { min: c.track.min, max: c.track.max, value: c.dolly });
+  document.getElementById('camDollyRow').hidden = !c.track;
   camCtl.setAttribute('aria-label', `${c.label} camera`);
   camLabels(c);
 }
-function camUpdate() {
-  const c = VIEWS[current].shot;
-  if (!c) return;
-  c.frameH = zoomToFrame(c, +camZoom.value);
-  c.pan = +camPan.value;
-  if (c.tilts) c.tilt = +camTilt.value;
+function camShow(c) {   // the view looks down this camera's lens
   camLabels(c);
   const { pos, tgt } = aimShot(c);
   persp.position.copy(pos);
@@ -2023,9 +2052,26 @@ function camUpdate() {
   persp.updateProjectionMatrix();
   controls.update();
   document.getElementById('caption').innerHTML = caption(current);
+  placeShotFrame();   // a caption that gains a line lifts the controls
   needsRender = true;
 }
+function camUpdate() {
+  const c = VIEWS[current].shot;
+  if (!c) return;
+  c.frameH = zoomToFrame(c, +camZoom.value);
+  c.pan = +camPan.value;
+  if (c.tilts) c.tilt = +camTilt.value;
+  camShow(c);
+}
 for (const el of [camZoom, camPan, camTilt]) el.addEventListener('input', camUpdate);
+// A dolly keeps the shot size, so the zoom slider follows the camera's new distance instead of setting it
+camDolly.addEventListener('input', () => {
+  const c = VIEWS[current].shot;
+  if (!c?.track) return;
+  dollyCam(c, +camDolly.value);
+  camZoom.value = String(frameToZoom(c));
+  camShow(c);
+});
 // 3D view lens: until the view is moved, the house stays framed (the camera moves in or out); after that the camera
 // stays put and only the angle changes
 function setLens(k) {
