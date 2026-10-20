@@ -268,6 +268,7 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
         <button type="button" data-view="plan" aria-pressed="false">Plan</button>
         <button type="button" data-view="section" aria-pressed="false">Section</button>
       </div>
+      <div class="vseg"><button type="button" id="saveView" title="Download this view as a PNG">Save image</button></div>
       <div class="vseg" role="group" aria-label="Seat views">
         <span class="grp" aria-hidden="true">Seats</span>
         <button type="button" data-view="front" aria-pressed="false">Front row</button>
@@ -2296,6 +2297,100 @@ document.querySelectorAll('a[data-dl]').forEach(a => a.addEventListener('click',
     dlSay(`That download didn't go through${err?.code ? ` (${err.code})` : ''}.`, a, 'Instead,');
   }
 }));
+// Save image (Brian, 20 Oct): the view as a PNG. A camera view saves its own 16:9 frame at 3840 × 2160, or 1920 × 1080
+// on a touch screen, where a 4K buffer can cost the page its WebGL context. Every other view saves what fills the
+// viewport, 2560 px on its long side, with the plan and section labels and scale bar painted in, since they are HTML
+// over the canvas. The renderer is resized, drawn, copied and put back in one task, so the page never shows the big
+// frame.
+const saveBtn = document.getElementById('saveView');
+function renderView() {
+  const c = VIEWS[current].shot, cssW = host.clientWidth, cssH = host.clientHeight, ratio = renderer.getPixelRatio();
+  let W, H, cam = camera;
+  if (c) {
+    [W, H] = matchMedia('(pointer: coarse)').matches ? [1920, 1080] : [3840, 2160];
+    cam = persp.clone();
+    cam.clearViewOffset();
+    cam.aspect = CAM_ASPECT;
+    cam.fov = 2 * camAim(c).half / DEG;
+    cam.updateProjectionMatrix();
+  } else {
+    const k = 2560 / Math.max(cssW, cssH);
+    [W, H] = [Math.round(cssW * k), Math.round(cssH * k)];
+  }
+  renderer.setPixelRatio(1);
+  renderer.setSize(W, H, false);
+  renderer.render(scene, cam);
+  const out = Object.assign(document.createElement('canvas'), { width: W, height: H }), ctx = out.getContext('2d');
+  ctx.drawImage(renderer.domElement, 0, 0);
+  renderer.setPixelRatio(ratio);
+  renderer.setSize(cssW, cssH, false);
+  needsRender = true;
+  if (!c) {   // bring the HTML overlays up to this exact frame first; a page in the background may not have drawn one
+    orientLabels(); labels.render(scene, camera); updateScale();
+    paintOverlays(ctx, W / cssW);
+  }
+  return out;
+}
+function paintOverlays(ctx, s) {   // the HTML drawn over the canvas: dimension pills, section notes, the scale bar
+  const base = host.getBoundingClientRect();
+  const z = el => parseInt(getComputedStyle(el.closest('.labels > *')).zIndex) || 0;   // the label layer stacks by distance
+  const els = [...labels.domElement.querySelectorAll('.lbl, .sec-lbl')].sort((a, b) => z(a) - z(b));
+  if (!scalebar.hidden) els.push(scalebar, ...scalebar.querySelectorAll('.bar, .bar i, .ticks span'));
+  for (const el of els) {
+    const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+    if (!r.width || !r.height || cs.visibility === 'hidden') continue;
+    const m = cs.transform.match(/matrix\(([^,]+),\s*([^,]+)/), w = el.offsetWidth, h = el.offsetHeight;
+    ctx.save();
+    ctx.translate((r.left + r.width / 2 - base.left) * s, (r.top + r.height / 2 - base.top) * s);
+    if (m) ctx.rotate(Math.atan2(+m[2], +m[1]));   // a pill turned to its dimension line
+    ctx.scale(s, s);
+    if (cs.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+      ctx.fillStyle = cs.backgroundColor;
+      ctx.beginPath(); ctx.roundRect(-w / 2, -h / 2, w, h, parseFloat(cs.borderTopLeftRadius) || 0); ctx.fill();
+    }
+    if (parseFloat(cs.borderTopWidth)) {
+      ctx.strokeStyle = cs.borderTopColor; ctx.lineWidth = parseFloat(cs.borderTopWidth);
+      ctx.strokeRect(-w / 2 + 0.5, -h / 2 + 0.5, w - 1, h - 1);
+    }
+    if (el.children.length === 0 && el.textContent.trim()) {
+      ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      if ('letterSpacing' in ctx) ctx.letterSpacing = cs.letterSpacing === 'normal' ? '0px' : cs.letterSpacing;
+      if (cs.textShadow !== 'none') Object.assign(ctx, { shadowColor: '#000', shadowBlur: 2 * s, shadowOffsetY: s });
+      Object.assign(ctx, { fillStyle: cs.color, textAlign: 'center', textBaseline: 'middle' });
+      ctx.fillText(el.textContent, 0, 0.5);
+    }
+    ctx.restore();
+  }
+}
+function saveSay(text) {   // the button reports how it went, then reads Save image again
+  saveBtn.textContent = text;
+  clearTimeout(saveSay.t);
+  saveSay.t = setTimeout(() => { saveBtn.textContent = 'Save image'; }, 2600);
+}
+saveBtn.addEventListener('click', async () => {
+  const v = VIEWS[current], c = v.shot;
+  const name = `hsl-${(c ? `${c.label} camera ${Math.round(lensMM(c))}mm` : v.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.png`;
+  saveBtn.disabled = true;
+  try {
+    const blob = await new Promise((ok, no) => renderView().toBlob(b => b ? ok(b) : no(new Error('encode')), 'image/png'));
+    if (saver) {
+      try { await saver.save({ filename: name, data: blob }); return saveSay('Saved'); }
+      catch (err) {
+        if (err?.code === 'declined') return;
+        if (err?.code === 'rate_limited') return saveSay('A save prompt is open');
+        // anything else: the browser's own download below
+      }
+    }
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    saveSay('Saved');
+  } catch {
+    saveSay("Couldn't save");
+  } finally {
+    saveBtn.disabled = false;
+  }
+});
 document.getElementById('resetBtn').addEventListener('click', () => {
   Object.assign(P, DEFAULTS);
   for (const t of TRUSSES) TRIM[t.id] = [...TRIM0[t.id]];
