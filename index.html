@@ -94,8 +94,15 @@ body {
 .lensseg button { padding: 7px 6px; }
 .fallback { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 24px; text-align: center; color: var(--vp-ink-2); font: 500 13px var(--f-mono); }
 
-.toolbar { position: absolute; top: 14px; left: 14px; right: 14px; z-index: 2; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; pointer-events: none; }
-.toolbar > * { pointer-events: auto; }
+/* Plain block flow, not flex, so Save image floats alone at the top right and the view groups wrap around it; font-size 0
+   drops the spaces between the groups, and each sets its own font */
+.toolbar { position: absolute; top: 14px; left: 14px; right: 14px; z-index: 2; font-size: 0; pointer-events: none; }
+.toolbar > * { pointer-events: auto; vertical-align: top; margin: 0 8px 8px 0; }
+.toolbar > .savebox { float: right; margin: 0 0 8px 8px; }
+.savebox button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px 9px 11px; font: 700 12.5px/1 var(--f-ui); color: #0d120e; background: var(--vp-ink); border: 0; border-radius: 4px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45); cursor: pointer; }
+.savebox button:hover { background: #fff; }
+.savebox button:disabled { opacity: 0.75; cursor: progress; }
+.savebox svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .vseg { display: inline-flex; flex-wrap: wrap; background: var(--vp-panel); border: 1px solid var(--vp-rule); border-radius: 4px; overflow: hidden; }
 .vseg .grp { padding: 9px 9px 0 10px; font: 700 9px/1 var(--f-ui); letter-spacing: 0.14em; text-transform: uppercase; color: var(--vp-ink-2); }
 .vseg button {
@@ -262,13 +269,13 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
     <p id="fallback" class="fallback">Loading the 3D model…</p>
 
     <div class="toolbar ui-only">
+      <div class="savebox"><button type="button" id="saveView" title="Download this view as a PNG"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14"/></svg><span>Save image</span></button></div>
       <div class="vseg" role="group" aria-label="Drawings">
         <span class="grp" aria-hidden="true">Model</span>
         <button type="button" data-view="overview" aria-pressed="true">3D</button>
         <button type="button" data-view="plan" aria-pressed="false">Plan</button>
         <button type="button" data-view="section" aria-pressed="false">Section</button>
       </div>
-      <div class="vseg"><button type="button" id="saveView" title="Download this view as a PNG">Save image</button></div>
       <div class="vseg" role="group" aria-label="Seat views">
         <span class="grp" aria-hidden="true">Seats</span>
         <button type="button" data-view="front" aria-pressed="false">Front row</button>
@@ -2302,7 +2309,7 @@ document.querySelectorAll('a[data-dl]').forEach(a => a.addEventListener('click',
 // viewport, 2560 px on its long side, with the plan and section labels and scale bar painted in, since they are HTML
 // over the canvas. The renderer is resized, drawn, copied and put back in one task, so the page never shows the big
 // frame.
-const saveBtn = document.getElementById('saveView');
+const saveBtn = document.getElementById('saveView'), saveLbl = saveBtn.querySelector('span');
 function renderView() {
   const c = VIEWS[current].shot, cssW = host.clientWidth, cssH = host.clientHeight, ratio = renderer.getPixelRatio();
   let W, H, cam = camera;
@@ -2363,9 +2370,9 @@ function paintOverlays(ctx, s) {   // the HTML drawn over the canvas: dimension 
   }
 }
 function saveSay(text) {   // the button reports how it went, then reads Save image again
-  saveBtn.textContent = text;
+  saveLbl.textContent = text;
   clearTimeout(saveSay.t);
-  saveSay.t = setTimeout(() => { saveBtn.textContent = 'Save image'; }, 2600);
+  saveSay.t = setTimeout(() => { saveLbl.textContent = 'Save image'; }, 2600);
 }
 saveBtn.addEventListener('click', async () => {
   const v = VIEWS[current], c = v.shot;
