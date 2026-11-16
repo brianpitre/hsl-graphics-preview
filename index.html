@@ -184,9 +184,10 @@ h2 { margin: 0; font: 800 10.5px/1.25 var(--f-ui); letter-spacing: 0.14em; text-
 .read.bad { background: var(--warn-bg); color: var(--warn); }
 
 #trussCtl { display: grid; gap: 8px; }
-details.truss { border: 1px solid var(--rule); border-radius: 4px; }
-details.truss summary { cursor: pointer; padding: 9px 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 800 12.5px/1.3 var(--f-ui); }
-details.truss summary span { font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-2); }
+details.truss, .truss.fixed { border: 1px solid var(--rule); border-radius: 4px; }
+details.truss summary, .truss.fixed { padding: 9px 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font: 800 12.5px/1.3 var(--f-ui); }
+details.truss summary { cursor: pointer; }
+details.truss summary span, .truss.fixed span { font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-2); }
 details.truss .pts { display: grid; gap: 10px; padding: 4px 12px 12px; }
 details.truss .ctl.all label { font-weight: 800; }
 
@@ -471,7 +472,7 @@ textarea.copytxt { width: 100%; min-height: 150px; font: 500 11.5px/1.45 var(--f
 
     <section class="sec" aria-labelledby="h-truss" id="sec-truss">
       <h2 id="h-truss">Trusses, Feb 2027 rig</h2>
-      <p class="note full-only">Positions come from the top-down rigging sketch, with everything upstage of the beam moved 1′ downstage on 17 Oct. The 70′ Screen 1 truss rides just above the screen and moves with Screen 1’s sliders. The others open at the trims set on 15 Oct. Each slider sets one pick point’s trim, the bottom of the truss above the deck. Uneven points tilt the truss without stretching it, so its ends swing in and the chains lean slightly; two points can differ by no more than their spacing along the truss. Green dots are the 600 lb hang points.</p>
+      <p class="note full-only">Layout set 16 Nov. The 60′ truss hangs just downstage of the beam at a fixed 28′ trim. Three pairs of 20′ trusses sit in the 5′ between the beam and Screen 1, 1′-6″ apart on center. Across the stage, the downstage pair keeps the rigging sketch’s spacing, 32′-4¾″ apart at center; the upstage pair sits 9′-8½″ apart, and the middle pair splits the difference at 21′-0½″. They open at 28′, 27′ and 26′, downstage to upstage. The 70′ Screen 1 truss rides just above the screen and moves with Screen 1’s sliders. Each slider sets one pick point’s trim, the bottom of the truss above the deck. Uneven points tilt the truss without stretching it, so its ends swing in and the chains lean slightly; two points can differ by no more than their spacing along the truss. Green dots are the 600 lb hang points.</p>
       <div id="trussCtl"></div>
       <p class="read full-only" id="t-read"></p>
     </section>
@@ -607,19 +608,25 @@ const DEFAULTS = {
 const P = { ...DEFAULTS };
 const EXISTING_X = (S.header.x0 + S.header.x1) / 2 - 0.15;   // today's wall: centered directly below the beam
 
-// Trusses from Brian's top-down rigging sketch (15 Oct 2026), scaled at 18.7 px/ft from its 70' truss.
-// x = plan distance upstage of F; y0..y1 = ends; picks = hang points (600 lb each). The sketch gives no
-// heights, so trims (bottom of truss above the deck) start just above Screen 1. Everything upstage of the
-// beam sits 1' downstage of the sketch (Brian, 17 Oct).
+// Trusses: lengths and pick points from Brian's top-down rigging sketch (15 Oct 2026), scaled at 18.7 px/ft from
+// its 70' truss; layout reworked by Brian on 16 Nov 2026. x = plan distance upstage of F (truss centerline);
+// y0..y1 = ends; picks = hang points (600 lb each); trim = bottom of truss above the deck.
 const TRUSSES = [
   // Screen 1 hangs on this truss, so it rides just above the screen and moves with Screen 1's sliders
   { id: 't70', name: 'Screen 1 truss', x: 5.26, y0: -35, y1: 35, picks: [-30.32, -22.74, -15.16, -7.58, 0, 7.58, 15.16, 22.74, 30.32], trim: 25.75, follows: true },
-  // trims below are the working layout Brian set on 15 Oct
-  { id: 't60', name: '60′ truss', x: 3.71, y0: -30, y1: 30, picks: [-22.74, -7.58, 7.58, 22.74], trim: 26.0, level: true },   // never angled: one slider
-  { id: 'tul', name: '20′ upstage, house left', x: 1.09, y0: -32.9, y1: -12.95, picks: [-30.32, -15.16], trim: 27.0 },
-  { id: 'tur', name: '20′ upstage, house right', x: 1.09, y0: 12.95, y1: 32.9, picks: [15.16, 30.32], trim: 27.0 },
-  { id: 'tdl', name: '20′ downstage, house left', x: -4.9, y0: -36.15, y1: -16.2, picks: [-33.65, -18.7], trim: 28.0 },
-  { id: 'tdr', name: '20′ downstage, house right', x: -4.9, y0: 16.2, y1: 36.15, picks: [18.7, 33.65], trim: 28.0 },
+  // 6" of air downstage of the beam (house face at x -2.94), at a fixed 28' trim: no sliders
+  { id: 't60', name: '60′ truss', x: -3.94, y0: -30, y1: 30, picks: [-22.74, -7.58, 7.58, 22.74], trim: 28.0, fixed: true },
+  // Three pairs of 20' trusses in the 5' between the beam (upstage face -0.11) and Screen 1's face (4.89 at the
+  // default 5' upstage): 1'-6" on center with 6" of air between neighbors, the beam and the screen. Gaps at center
+  // between each pair's inner ends (Brian, 16 Nov): the downstage pair keeps the sketch's 32.4'; the upstage pair
+  // is half its first 16 Nov gap (19.4' -> 9.7'); the middle pair sits halfway between (21.05'). The middle and
+  // upstage pairs keep the pick layout of the sketch's old upstage pair: 2.21' in from the inner end, 2.58' from the outer.
+  { id: 'tdl', name: '20′ downstage, house left', x: 0.89, y0: -36.15, y1: -16.2, picks: [-33.65, -18.7], trim: 28.0 },
+  { id: 'tdr', name: '20′ downstage, house right', x: 0.89, y0: 16.2, y1: 36.15, picks: [18.7, 33.65], trim: 28.0 },
+  { id: 'tml', name: '20′ middle, house left', x: 2.39, y0: -30.475, y1: -10.525, picks: [-27.895, -12.735], trim: 27.0 },
+  { id: 'tmr', name: '20′ middle, house right', x: 2.39, y0: 10.525, y1: 30.475, picks: [12.735, 27.895], trim: 27.0 },
+  { id: 'tul', name: '20′ upstage, house left', x: 3.89, y0: -24.8, y1: -4.85, picks: [-22.22, -7.06], trim: 26.0 },
+  { id: 'tur', name: '20′ upstage, house right', x: 3.89, y0: 4.85, y1: 24.8, picks: [7.06, 22.22], trim: 26.0 },
 ];
 const TRIM0 = Object.fromEntries(TRUSSES.map(t => [t.id, t.picks.map(() => t.trim)]));
 const TRIM = structuredClone(TRIM0);
@@ -1537,16 +1544,25 @@ function readouts() {
       : `${!kOk && !dOk ? 'Both risers run' : !kOk ? 'The keys riser runs' : 'The drums riser runs'} off the deck edge or onto the stairs.`;
     el.classList.toggle('bad', !(kOk && dOk));
   }
-  // Trusses: rated hang points vs. Screen 1's weight, and the 60' truss in front of the screen
+  // Trusses: rated hang points vs. Screen 1's weight, lighting trusses dropped in front of the screen, and
+  // Screen 1 (with its truss) slid into the lighting trusses
   {
-    const el = document.getElementById('t-read'), t70 = TRUSSES[0], t60 = TRUSSES[1];
-    const rated = t70.picks.length * HANG_LB, top = P.cTrim + SPEC.center.h;
-    let low = Infinity;
-    for (let y = -SPEC.center.w / 2; y <= SPEC.center.w / 2; y += 1) low = Math.min(low, trimAt(t60, Math.max(t60.y0, Math.min(t60.y1, y))));
+    const el = document.getElementById('t-read'), t70 = TRUSSES[0];
+    const rated = t70.picks.length * HANG_LB, top = P.cTrim + SPEC.center.h, face = S.header.x1 + P.cUp, half = SPEC.center.w / 2;
+    const lights = TRUSSES.filter(t => !t.follows);
+    // a straight truss is lowest at one end of the stretch that crosses the screen
+    const lowOver = t => { const a = Math.max(t.y0, -half), b = Math.min(t.y1, half); return a < b ? Math.min(trimAt(t, a), trimAt(t, b)) : Infinity; };
+    const drops = lights.filter(t => t.x < face).map(t => [t, lowOver(t)]).filter(([, v]) => v < top);
+    const hits = lights.filter(t => t.x + TRUSS_SIZE / 2 > face && t.x - TRUSS_SIZE / 2 < t70.x + TRUSS_SIZE / 2);
     let msg = `Screen 1 truss: ${t70.picks.length} points × ${HANG_LB} lb = ${rated.toLocaleString('en-US')} lb rated. Screen 1 alone is ${SPEC.center.lb.toLocaleString('en-US')} lb in the ROE calculator, before truss, hang bars and motors.`;
-    if (low < top && t60.x < S.header.x1 + P.cUp) msg += ` The 60′ truss drops ${ftIn(top - low)} below the screen top, in front of the screen.`;
+    if (hits.length) msg += ' At this spot Screen 1 and its truss run into the lighting trusses.';
+    if (drops.length) {
+      const lowest = Math.min(...drops.map(([, v]) => v));
+      msg += drops.length === 1 ? ` One truss in front of the screen drops ${ftIn(top - lowest)} below the screen top (${drops[0][0].name}).`
+        : ` ${drops.length} trusses in front of the screen drop below the screen top, the lowest by ${ftIn(top - lowest)}.`;
+    }
     el.textContent = msg;
-    el.classList.toggle('bad', rated < SPEC.center.lb || low < top);
+    el.classList.toggle('bad', rated < SPEC.center.lb || drops.length > 0 || hits.length > 0);
   }
   // Screens 2 + 3
   {
@@ -1602,7 +1618,7 @@ function readouts() {
     ['Seats as modeled', 'est', `${seats.length.toLocaleString('en-US')}: floor ${tierCount('floor')}, slope ${tierCount('slope')}, balcony ${tierCount('balcony')}. The 2016 layout, trimmed at the walls, FOH and camera bay`],
     ['PA', 'est', 'main hangs where the June photo shows them; side hangs 31′-0″ off center (moved 10′ in); heights confirmed'],
     ['Band risers', 'est', `16′-0″ × 8′-0″, drums riser's stage-left half 10′-0″ deep, ROE JT3.1 500 mm half panels on three sides (160 px each), ten across each front and five on each end; positions set 15 Oct; height ${ftIn(RISER.h)} (one panel) estimated`],
-    ['Trusses', 'set', 'positions and pick points from the 15 Oct rigging sketch, the four upstage of the beam moved 1′ downstage 17 Oct; trims set 15 Oct'],
+    ['Trusses', 'set', 'lengths and pick points from the 15 Oct rigging sketch; layout set 16 Nov: the 60′ truss 6″ downstage of the beam at a fixed 28′-0″, three pairs of 20′ trusses between the beam and Screen 1, 1′-6″ apart on center; downstage to upstage, 32′-4¾″, 21′-0½″ and 9′-8½″ apart at center, opening at 28′, 27′ and 26′'],
     ['Existing LED wall', 'site', `3840 × 990 px at 4 mm = 15.36 × 3.96 m (${ftIn(SPEC.existing.w)} × ${ftIn(SPEC.existing.h)}), directly below the beam; standing on the deck per the June photo`],
     ['ROE screen sizes', 'quote', '18.0 × 7.5 m center, two at 9.0 × 7.5 m (SQ-35382)'],
     ['ROE screen placement', 'set', 'working layout set 15 Oct: Screen 1 on its truss 5′ upstage of the beam (moved 1′ downstage 17 Oct), side screens 50′-0″ off center, 9′-3″ downstage, toed in 18° (reset 17 Oct), all on the deck'],
@@ -1992,15 +2008,14 @@ const SLIDERS = [
   ['s-off', 'sOff', ftIn], ['s-down', 'sDown', ftIn], ['s-toe', 'sToe', v => `${v}°`],
   ['k-x', 'keysX', ftIn], ['k-y', 'keysY', ftIn], ['d-x', 'drumsX', ftIn], ['d-y', 'drumsY', ftIn],
 ];
-// One slider per pick point, plus an "All points" slider per truss
+// One slider per pick point, plus an "All points" slider per truss; a fixed truss gets a plain row instead
 const trussCtl = document.getElementById('trussCtl');
 function syncTrussSliders() {
   for (const t of TRUSSES) {
-    if (t.follows) continue;
+    if (t.follows || t.fixed) continue;
     const v = TRIM[t.id], same = v.every(x => x === v[0]);
     document.getElementById(`${t.id}-all`).value = v.reduce((a, b) => a + b, 0) / v.length;
     document.getElementById(`${t.id}-all-o`).textContent = same ? ftIn(v[0]) : 'varies';
-    if (t.level) continue;   // one slider only
     v.forEach((x, i) => {
       document.getElementById(`${t.id}-${i}`).value = x;
       document.getElementById(`${t.id}-${i}-o`).textContent = ftIn(x);
@@ -2009,11 +2024,19 @@ function syncTrussSliders() {
 }
 for (const t of TRUSSES) {
   if (t.follows) continue;   // the Screen 1 truss moves with Screen 1's own sliders
+  if (t.fixed) {
+    const f = document.createElement('div'), info = document.createElement('span');
+    f.className = 'truss fixed';
+    info.textContent = `${Math.round(t.y1 - t.y0)}′ · ${t.picks.length} points · fixed at ${ftIn(t.trim)}`;
+    f.append(t.name, info);
+    trussCtl.append(f);
+    continue;
+  }
   const d = document.createElement('details');
   d.className = 'truss';
-  d.open = t.id === 't60';
+  d.open = t.id === 'tdl';   // the first one opens, to show how the sliders work
   const sum = document.createElement('summary'), info = document.createElement('span'), pts = document.createElement('div');
-  info.textContent = `${Math.round(t.y1 - t.y0)}′ · ${t.picks.length} points${t.level ? ', level' : ''}`;
+  info.textContent = `${Math.round(t.y1 - t.y0)}′ · ${t.picks.length} points`;
   sum.append(t.name, info);
   pts.className = 'pts';
   d.append(sum, pts);
@@ -2028,8 +2051,8 @@ for (const t of TRUSSES) {
     return inp;
   };
   const apply = () => { syncTrussSliders(); placeTrusses(); readouts(); };
-  row(`${t.id}-all`, t.level ? 'Trim, bottom of truss' : 'All points', 'all').addEventListener('input', e => { const v = parseFloat(e.target.value); TRIM[t.id] = TRIM[t.id].map(() => v); apply(); });
-  if (!t.level) t.picks.forEach((y, i) => {
+  row(`${t.id}-all`, 'All points', 'all').addEventListener('input', e => { const v = parseFloat(e.target.value); TRIM[t.id] = TRIM[t.id].map(() => v); apply(); });
+  t.picks.forEach((y, i) => {
     const where = Math.abs(y) < 0.01 ? 'center' : `${ftIn(Math.abs(y))} house ${y < 0 ? 'left' : 'right'}`;
     row(`${t.id}-${i}`, `Point ${i + 1} · ${where}`).addEventListener('input', e => {
       // a rigid truss tilts no further than straight down, so no two points differ by more than their spacing along it
@@ -2414,7 +2437,7 @@ function copyText() {
     'Truss trims, bottom of truss above the deck, house left to house right:',
     ...TRUSSES.map(t => t.follows
       ? `  ${t.name}: ${ftIn(TRIM[t.id][0])}, riding ${ftIn(SCREEN_TRUSS_GAP)} above Screen 1`
-      : t.level ? `  ${t.name}: ${ftIn(TRIM[t.id][0])}, level`
+      : t.fixed ? `  ${t.name}: ${ftIn(TRIM[t.id][0])}, fixed`
       : `  ${t.name}: ${TRIM[t.id].map(ftIn).join(', ')}`),
   ].join('\n');
   document.getElementById('copyTxt').value = t;
